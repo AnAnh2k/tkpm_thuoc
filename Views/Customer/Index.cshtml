@@ -1,0 +1,344 @@
+@{
+    ViewData["Title"] = "Quản lý khách hàng";
+}
+
+<div class="container mt-4">
+    <h2 class="mb-4 text-primary">Quản lý khách hàng</h2>
+
+    <div id="message" class="alert" style="display:none;"></div>
+
+    <!-- Nút thêm khách hàng -->
+    <button type="button" class="btn btn-primary mb-3" data-toggle="modal" data-target="#khachHangModal" onclick="clearForm()">
+        Thêm khách hàng
+    </button>
+
+    <div class="input-group mb-3" style="max-width: 300px;">
+        <input type="text" id="searchInput" class="form-control" placeholder="Tìm theo mã, tên hoặc SĐT">
+        <div class="input-group-append">
+            <span class="input-group-text"><i class="fas fa-search"></i></span>
+        </div>
+    </div>
+
+    <!-- Bảng danh sách khách hàng -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-bordered table-hover mb-0" id="khachHangTable">
+                <thead class="bg-primary text-white">
+                    <tr>
+                        <th>Mã khách hàng</th>
+                        <th>Tên khách hàng</th>
+                        <th>Số điện thoại</th>
+                        <th>Địa chỉ</th>
+                        <th>Ngày sinh</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody id="khachHangList"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal thêm/sửa khách hàng -->
+    <div class="modal fade" id="khachHangModal" tabindex="-1" role="dialog" aria-labelledby="khachHangModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="khachHangModalLabel">Thêm/Sửa khách hàng</h5>
+                </div>
+                <div class="modal-body">
+                    <form id="khachHangForm">
+                        <div class="form-group">
+                            <label class="font-weight-bold">Mã khách hàng</label>
+                            <input type="text" id="maKH" class="form-control" required />
+                        </div>
+                        <div class="form-group">
+                            <label class="font-weight-bold">Tên khách hàng</label>
+                            <input type="text" id="tenKH" class="form-control" required />
+                        </div>
+                        <div class="form-group">
+                            <label class="font-weight-bold">Số điện thoại</label>
+                            <input type="text" id="sdt" class="form-control" required />
+                        </div>
+                        <div class="form-group">
+                            <label class="font-weight-bold">Địa chỉ</label>
+                            <input type="text" id="diaChi" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                            <label class="font-weight-bold">Ngày sinh</label>
+                            <input type="date" id="ngaySinh" class="form-control" />
+                        </div>
+                        <div id="formErrors" class="text-danger" style="display:none;"></div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
+                    <button type="button" class="btn btn-primary" id="saveKhachHang">Lưu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal lịch sử mua hàng -->
+    <div class="modal fade" id="historyModal" tabindex="-1" role="dialog" aria-labelledby="historyModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title" id="historyModalLabel">Lịch sử mua hàng</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body" id="historyModalBody">
+                    <div class="text-center text-muted">Đang tải...</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    $(document).ready(function () {
+        let searchTimer = null;
+        loadKhachHangList();
+
+        function safeText(value) {
+            return value ?? '';
+        }
+
+        function loadKhachHangList(keyword = '') {
+            const url = keyword
+                ? '@Url.Action("Search", "Customer")'
+                : '@Url.Action("GetCustomerList", "Customer")';
+
+            $.ajax({
+                url: url,
+                type: 'GET',
+                data: keyword ? { sTuKhoa: keyword } : {},
+                success: function (data) {
+                    var tbody = $('#khachHangList').empty();
+                    if (!data || data.length === 0) {
+                        tbody.append('<tr><td colspan="4" class="text-center">Không tìm thấy khách hàng</td></tr>');
+                        return;
+                    }
+
+                    data.forEach(function (kh) {
+                        let ngaySinhStr = kh.dNgaySinh ? new Date(kh.dNgaySinh).toLocaleDateString('vi-VN') : '';
+                        tbody.append(`
+                            <tr>
+                                <td>${safeText(kh.pkSMaKh)}</td>
+                                <td>${safeText(kh.sTenKh)}</td>
+                                <td>${safeText(kh.sSdt)}</td>
+                                <td>${safeText(kh.sDiaChi)}</td>
+                                <td>${ngaySinhStr}</td>
+                                <td>
+                                    <button class="btn btn-warning btn-sm mr-1" onclick="editKhachHang('${kh.pkSMaKh}')">Sửa</button>
+                                    <button class="btn btn-info btn-sm mr-1" onclick="viewHistory('${kh.pkSMaKh}')"><i class="fas fa-history"></i> Lịch sử</button>
+                                    <button class="btn btn-danger btn-sm" onclick="deleteKhachHang('${kh.pkSMaKh}')">Xóa</button>
+                                </td>
+                            </tr>
+                        `);
+                    });
+                },
+                error: function () {
+                    showMessage('alert-danger', 'Không tải được danh sách khách hàng.');
+                }
+            });
+        }
+
+        $('#searchInput').on('input', function () {
+            const keyword = $(this).val().trim();
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(function () {
+                loadKhachHangList(keyword);
+            }, 250);
+        });
+
+        window.clearForm = function () {
+            $('#khachHangForm')[0].reset();
+            $('#maKH').prop('disabled', false);
+            $('#khachHangModalLabel').text('Thêm khách hàng');
+            $('#formErrors').hide();
+        };
+
+        $('#saveKhachHang').click(function () {
+            var maKH = $('#maKH').val().trim();
+            var tenKH = $('#tenKH').val().trim();
+            var sdt = $('#sdt').val().trim();
+            var diaChi = $('#diaChi').val().trim();
+            var ngaySinh = $('#ngaySinh').val();
+            var errors = [];
+
+            if (!maKH) errors.push("Vui lòng nhập mã khách hàng.");
+            if (!tenKH) errors.push("Vui lòng nhập tên khách hàng.");
+            if (!sdt) errors.push("Vui lòng nhập số điện thoại.");
+
+            var sdtRegex = /^0\d{9}$/;
+            if (sdt && !sdtRegex.test(sdt)) {
+                errors.push("Số điện thoại không đúng định dạng (10 số, bắt đầu bằng 0).");
+            }
+
+            if (errors.length > 0) {
+                $('#formErrors').html(errors.join("<br>")).show();
+                return;
+            }
+
+            var khachHang = {
+                PkSMaKh: maKH,
+                STenKh: tenKH,
+                SSdt: sdt,
+                SDiaChi: diaChi,
+                DNgaySinh: ngaySinh || null
+            };
+
+            var url = $('#maKH').prop('disabled') ? '@Url.Action("EditCustomer", "Customer")' : '@Url.Action("Create", "Customer")';
+            $.ajax({
+                url: url,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(khachHang),
+                success: function (response) {
+                    showMessage(response.success ? 'alert-success' : 'alert-danger', response.message);
+                    if (response.success) {
+                        $('#khachHangModal').modal('hide');
+                        loadKhachHangList($('#searchInput').val().trim());
+                    }
+                },
+                error: function () {
+                    showMessage('alert-danger', 'Không thể lưu thông tin khách hàng.');
+                }
+            });
+        });
+
+        window.editKhachHang = function (maKH) {
+            $.ajax({
+                url: '@Url.Action("GetCustomerList", "Customer")',
+                type: 'GET',
+                success: function (data) {
+                    var kh = data.find(x => x.pkSMaKh === maKH);
+                    if (!kh) {
+                        showMessage('alert-danger', 'Không tìm thấy khách hàng!');
+                        return;
+                    }
+
+                    $('#maKH').val(kh.pkSMaKh).prop('disabled', true);
+                    $('#tenKH').val(safeText(kh.sTenKh));
+                    $('#sdt').val(safeText(kh.sSdt));
+                    $('#diaChi').val(safeText(kh.sDiaChi));
+                    if (kh.dNgaySinh) {
+                        $('#ngaySinh').val(kh.dNgaySinh.split('T')[0]);
+                    } else {
+                        $('#ngaySinh').val('');
+                    }
+                    $('#khachHangModalLabel').text('Sửa khách hàng');
+                    $('#formErrors').hide();
+                    $('#khachHangModal').modal('show');
+                },
+                error: function () {
+                    showMessage('alert-danger', 'Không tải được dữ liệu khách hàng.');
+                }
+            });
+        };
+
+        window.viewHistory = function (maKH) {
+            $('#historyModalLabel').text('Lịch sử mua hàng — KH: ' + maKH);
+            $('#historyModalBody').html('<div class="text-center"><div class="spinner-border text-info" role="status"></div></div>');
+            $('#historyModal').modal('show');
+
+            $.ajax({
+                url: '@Url.Action("GetPurchaseHistory", "Customer")',
+                type: 'GET',
+                data: { maKH: maKH },
+                success: function (data) {
+                    if (!data || data.length === 0) {
+                        $('#historyModalBody').html('<p class="text-center text-muted">Khách hàng chưa có lịch sử mua hàng.</p>');
+                        return;
+                    }
+
+                    let html = '';
+                    data.forEach(function (pt) {
+                        let ngayLap = pt.dTgLap ? new Date(pt.dTgLap).toLocaleDateString('vi-VN') : 'N/A';
+                        let tongTien = 0;
+                        let products = '';
+                        pt.products.forEach(function (sp) {
+                            let thanhtien = (sp.soLuong || 0) * (sp.donGia || 0);
+                            tongTien += thanhtien;
+                            products += `<tr>
+                                <td>${sp.maSanPham}</td>
+                                <td>${sp.tenSanPham || ''}</td>
+                                <td class="text-center">${sp.soLuong || 0}</td>
+                                <td class="text-right">${(sp.donGia || 0).toLocaleString('vi-VN')} đ</td>
+                                <td class="text-right">${thanhtien.toLocaleString('vi-VN')} đ</td>
+                            </tr>`;
+                        });
+
+                        html += `
+                        <div class="card mb-3">
+                            <div class="card-header bg-light d-flex justify-content-between">
+                                <span><strong>Phiếu thu:</strong> ${pt.pkSMaPt}</span>
+                                <span><strong>Ngày:</strong> ${ngayLap}</span>
+                                <span><strong>Hình thức TT:</strong> ${pt.sHinhThucTt || 'N/A'}</span>
+                            </div>
+                            <div class="card-body p-0">
+                                <table class="table table-sm table-bordered mb-0">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th>Mã SP</th><th>Tên sản phẩm</th>
+                                            <th class="text-center">SL</th>
+                                            <th class="text-right">Đơn giá</th>
+                                            <th class="text-right">Thành tiền</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>${products}</tbody>
+                                    <tfoot>
+                                        <tr class="table-info">
+                                            <td colspan="4" class="text-right font-weight-bold">Tổng cộng:</td>
+                                            <td class="text-right font-weight-bold">${tongTien.toLocaleString('vi-VN')} đ</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>`;
+                    });
+                    $('#historyModalBody').html(html);
+                },
+                error: function () {
+                    $('#historyModalBody').html('<p class="text-danger">Không thể tải lịch sử mua hàng.</p>');
+                }
+            });
+        };
+
+        window.deleteKhachHang = function (maKH) {
+            if (confirm('Bạn có chắc muốn xóa khách hàng này không?')) {
+                $.ajax({
+                    url: '@Url.Action("DeleteCustomer", "Customer")',
+                    type: 'POST',
+                    data: { maKH: maKH },
+                    success: function (response) {
+                        showMessage(response.success ? 'alert-success' : 'alert-danger', response.message);
+                        if (response.success) {
+                            loadKhachHangList($('#searchInput').val().trim());
+                        }
+                    },
+                    error: function () {
+                        showMessage('alert-danger', 'Không thể xóa khách hàng.');
+                    }
+                });
+            }
+        };
+
+        function showMessage(className, message) {
+            $('#message').removeClass('alert-success alert-danger')
+                .addClass(className).text(message).show();
+            setTimeout(() => $('#message').hide(), 3000);
+        }
+
+        $(document).on('click', '.close, .btn-secondary', function () {
+            $('#khachHangModal').modal('hide');
+        });
+    });
+</script>

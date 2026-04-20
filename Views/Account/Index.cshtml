@@ -1,0 +1,199 @@
+@{
+    ViewData["Title"] = "Quản lý tài khoản";
+}
+
+<div class="container mt-4">
+    <h2 class="mb-4 text-primary">Quản lý tài khoản</h2>
+
+    <div id="message" class="alert" style="display:none;"></div>
+
+    <!-- Nút thêm tài khoản -->
+    <button type="button" class="btn btn-primary mb-3" data-toggle="modal" data-target="#taiKhoanModal" onclick="clearForm()">
+        Thêm tài khoản
+    </button>
+
+    <!-- Bảng danh sách tài khoản -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-bordered table-hover mb-0" id="taiKhoanTable">
+                <thead class="bg-primary text-white">
+                    <tr>
+                        <th>Mã tài khoản</th>
+                        <th>Tên tài khoản</th>
+                        <th>Mật khẩu</th>
+                        <th>Quyền</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody id="taiKhoanList"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal thêm/sửa tài khoản -->
+    <div class="modal fade" id="taiKhoanModal" tabindex="-1" role="dialog" aria-labelledby="taiKhoanModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="taiKhoanModalLabel">Thêm/Sửa tài khoản</h5>
+                </div>
+                <div class="modal-body">
+                    <form id="taiKhoanForm">
+                        <div class="form-group">
+                            <label class="font-weight-bold">Mã tài khoản</label>
+                            <input type="text" id="maTK" class="form-control" required />
+                        </div>
+                        <div class="form-group">
+                            <label class="font-weight-bold">Tên tài khoản</label>
+                            <input type="text" id="tenTK" class="form-control" required />
+                        </div>
+                        <div class="form-group">
+                            <label class="font-weight-bold">Mật khẩu</label>
+                            <input type="password" id="matKhau" class="form-control" required />
+                        </div>
+                        <div class="form-group">
+                            <label class="font-weight-bold">Quyền</label>
+                            <select id="maQuyen" class="form-control" required></select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
+                    <button type="button" class="btn btn-primary" id="saveTaiKhoan">Lưu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    $(document).ready(function () {
+        loadTaiKhoanList();
+        loadQuyenDropdown();
+
+        function safeText(value) {
+            return value ?? '';
+        }
+
+        function loadTaiKhoanList() {
+            $.ajax({
+                url: '@Url.Action("GetAccountList", "Account")',
+                type: 'GET',
+                success: function (data) {
+                    var tbody = $('#taiKhoanList').empty();
+                    if (!data || data.length === 0) {
+                        tbody.append('<tr><td colspan="5" class="text-center">Không có dữ liệu</td></tr>');
+                        return;
+                    }
+
+                    data.forEach(function (tk) {
+                        tbody.append(`
+                            <tr>
+                                <td>${safeText(tk.pkSMaTk)}</td>
+                                <td>${safeText(tk.sTenTk)}</td>
+                                <td>${safeText(tk.sMk)}</td>
+                                <td>${safeText(tk.quyen)}</td>
+                                <td>
+                                    <button class="btn btn-warning btn-sm mr-1" onclick="editTaiKhoan('${tk.pkSMaTk}')">Sửa</button>
+                                    <button class="btn btn-danger btn-sm" onclick="deleteTaiKhoan('${tk.pkSMaTk}')">Xóa</button>
+                                </td>
+                            </tr>
+                        `);
+                    });
+                }
+            });
+        }
+
+        function loadQuyenDropdown() {
+            $.ajax({
+                url: '@Url.Action("GetQuyenDropdown", "Account")',
+                type: 'GET',
+                success: function (data) {
+                    var select = $('#maQuyen').empty();
+                    data.forEach(function (q) {
+                        select.append(`<option value="${q.pkSMaQuyen}">${q.sTenQuyen}</option>`);
+                    });
+                }
+            });
+        }
+
+        window.clearForm = function () {
+            $('#taiKhoanForm')[0].reset();
+            $('#maTK').prop('disabled', false);
+            $('#taiKhoanModalLabel').text('Thêm tài khoản');
+        };
+
+        $('#saveTaiKhoan').click(function () {
+            var taiKhoan = {
+                PkSMaTk: $('#maTK').val(),
+                STenTk: $('#tenTK').val(),
+                SMk: $('#matKhau').val(),
+                FkSMaQuyen: $('#maQuyen').val()
+            };
+
+            var url = $('#maTK').prop('disabled') ? '@Url.Action("EditAccount", "Account")' : '@Url.Action("AddAccount", "Account")';
+            $.ajax({
+                url: url,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(taiKhoan),
+                success: function (response) {
+                    showMessage(response.success ? 'alert-success' : 'alert-danger', response.message);
+                    if (response.success) {
+                        $('#taiKhoanModal').modal('hide');
+                        loadTaiKhoanList();
+                    }
+                }
+            });
+        });
+
+        window.editTaiKhoan = function (maTK) {
+            $.ajax({
+                url: '@Url.Action("GetAccountList", "Account")',
+                type: 'GET',
+                success: function (data) {
+                    var tk = data.find(x => x.pkSMaTk === maTK);
+                    if (!tk) {
+                        showMessage('alert-danger', 'Không tìm thấy tài khoản!');
+                        return;
+                    }
+
+                    $('#maTK').val(tk.pkSMaTk).prop('disabled', true);
+                    $('#tenTK').val(safeText(tk.sTenTk));
+                    $('#matKhau').val(safeText(tk.sMk));
+                    $('#maQuyen').val(tk.fkSMaQuyen || '');
+                    $('#taiKhoanModalLabel').text('Sửa tài khoản');
+                    $('#taiKhoanModal').modal('show');
+                }
+            });
+        };
+
+        window.deleteTaiKhoan = function (maTK) {
+            if (confirm('Bạn có chắc muốn xóa tài khoản này không?')) {
+                $.ajax({
+                    url: '@Url.Action("DeleteAccount", "Account")',
+                    type: 'POST',
+                    data: { maTK: maTK },
+                    success: function (response) {
+                        showMessage(response.success ? 'alert-success' : 'alert-danger', response.message);
+                        if (response.success) {
+                            loadTaiKhoanList();
+                        }
+                    }
+                });
+            }
+        };
+
+        function showMessage(className, message) {
+            $('#message').removeClass('alert-success alert-danger')
+                .addClass(className).text(message).show();
+            setTimeout(() => $('#message').hide(), 3000);
+        }
+
+        $(document).on('click', '.close, .btn-secondary', function () {
+            $('#taiKhoanModal').modal('hide');
+        });
+    });
+</script>

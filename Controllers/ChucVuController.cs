@@ -1,18 +1,18 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using CNPM.Models;
-using System.Linq;
-using System.Threading.Tasks;
+using CNPM.Services;
+
+namespace CNPM.Controllers;
 
 [Authorize]
 public class ChucVuController : Controller
 {
-    private readonly PharmacyDbContext _context;
+    private readonly IChucVuService _chucVuService;
 
-    public ChucVuController(PharmacyDbContext context)
+    public ChucVuController(IChucVuService chucVuService)
     {
-        _context = context;
+        _chucVuService = chucVuService;
     }
 
     public IActionResult Index()
@@ -23,10 +23,8 @@ public class ChucVuController : Controller
     [HttpGet]
     public async Task<IActionResult> GetChucVuList()
     {
-        var chucVus = await _context.TblChucVus
-            .Select(cv => new { cv.PkSMaCv, cv.STenCv })
-            .ToListAsync();
-        return Json(chucVus);
+        var chucVus = await _chucVuService.GetChucVuListAsync();
+        return Json(chucVus.Select(cv => new { PkSMaCv = cv.Id, STenCv = cv.Name }));
     }
 
     [HttpPost]
@@ -37,14 +35,8 @@ public class ChucVuController : Controller
             return Json(new { success = false, message = "Dữ liệu không hợp lệ!" });
         }
 
-        if (await _context.TblChucVus.AnyAsync(cv => cv.PkSMaCv == chucVu.PkSMaCv))
-        {
-            return Json(new { success = false, message = "Mã chức vụ đã tồn tại!" });
-        }
-
-        _context.TblChucVus.Add(chucVu);
-        await _context.SaveChangesAsync();
-        return Json(new { success = true, message = "Thêm chức vụ thành công!" });
+        var result = await _chucVuService.AddChucVuAsync(chucVu);
+        return Json(new { success = result.Success, message = result.Message });
     }
 
     [HttpPost]
@@ -55,32 +47,14 @@ public class ChucVuController : Controller
             return Json(new { success = false, message = "Dữ liệu không hợp lệ!" });
         }
 
-        var existingChucVu = await _context.TblChucVus
-            .FirstOrDefaultAsync(cv => cv.PkSMaCv == chucVu.PkSMaCv);
-
-        if (existingChucVu == null)
-        {
-            return Json(new { success = false, message = "Không tìm thấy chức vụ!" });
-        }
-
-        existingChucVu.STenCv = chucVu.STenCv;
-        await _context.SaveChangesAsync();
-        return Json(new { success = true, message = "Sửa chức vụ thành công!" });
+        var result = await _chucVuService.EditChucVuAsync(chucVu);
+        return Json(new { success = result.Success, message = result.Message });
     }
 
     [HttpPost]
     public async Task<IActionResult> DeleteChucVu(string maCV)
     {
-        var chucVu = await _context.TblChucVus
-            .FirstOrDefaultAsync(cv => cv.PkSMaCv == maCV);
-
-        if (chucVu == null)
-        {
-            return Json(new { success = false, message = "Không tìm thấy chức vụ!" });
-        }
-
-        _context.TblChucVus.Remove(chucVu);
-        await _context.SaveChangesAsync();
-        return Json(new { success = true, message = "Xóa chức vụ thành công!" });
+        var result = await _chucVuService.DeleteChucVuAsync(maCV);
+        return Json(new { success = result.Success, message = result.Message });
     }
 }

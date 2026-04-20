@@ -1,18 +1,17 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using CNPM.Models;
-using System.Linq;
-using System.Threading.Tasks;
+using CNPM.Services;
+
+namespace CNPM.Controllers;
 
 [Authorize]
 public class PhieuXuatKhoController : Controller
 {
-    private readonly PharmacyDbContext _context;
+    private readonly IPhieuXuatKhoService _phieuXuatKhoService;
 
-    public PhieuXuatKhoController(PharmacyDbContext context)
+    public PhieuXuatKhoController(IPhieuXuatKhoService phieuXuatKhoService)
     {
-        _context = context;
+        _phieuXuatKhoService = phieuXuatKhoService;
     }
 
     public IActionResult Index()
@@ -23,45 +22,18 @@ public class PhieuXuatKhoController : Controller
     [HttpGet]
     public async Task<IActionResult> GetPhieuXuatKhoList()
     {
-        var phieuXuatKhos = await _context.TblPhieuXuatKhos
-            .Include(px => px.FkSMaNvNavigation)
-            .Select(px => new
-            {
-                px.PkSMaPx,
-                px.DTgLap,
-                NhanVien = px.FkSMaNvNavigation.SHoTen
-            })
-            .ToListAsync();
+        var phieuXuatKhos = await _phieuXuatKhoService.GetPhieuXuatKhoListAsync();
         return Json(phieuXuatKhos);
     }
 
     [HttpGet]
     public async Task<IActionResult> GetChiTietPhieuXuatKho(string maPX)
     {
-        var chiTiet = await _context.TblCtphieuXuatKhos
-            .Where(ct => ct.PkFkSMaPx == maPX)
-            .Include(ct => ct.PkFkSMaSpNavigation)
-            .Select(ct => new
-            {
-                ct.PkFkSMaSp,
-                SanPham = ct.PkFkSMaSpNavigation.STenSp,
-                ct.ISlyc,
-                ct.ISlx,
-                ct.SGhiChu
-            })
-            .ToListAsync();
-
-        var phieuXuatKho = await _context.TblPhieuXuatKhos
-            .Include(px => px.FkSMaNvNavigation)
-            .FirstOrDefaultAsync(px => px.PkSMaPx == maPX);
-
-        var result = new
+        var result = await _phieuXuatKhoService.GetChiTietPhieuXuatKhoAsync(maPX);
+        if (result == null)
         {
-            MaPX = phieuXuatKho.PkSMaPx,
-            NhanVien = phieuXuatKho.FkSMaNvNavigation.SHoTen,
-            NgayLap = phieuXuatKho.DTgLap,
-            ChiTiet = chiTiet
-        };
+            return NotFound(new { message = "Không tìm thấy phiếu xuất kho!" });
+        }
 
         return Json(result);
     }

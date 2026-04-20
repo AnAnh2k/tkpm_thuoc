@@ -5,6 +5,33 @@
 <h2>Quản lý hóa đơn</h2>
 <div id="message" class="alert" style="display:none;"></div>
 
+<div class="row mb-3">
+    <div class="col-md-2">
+        <label>Từ ngày</label>
+        <input type="date" id="tuNgay" class="form-control" />
+    </div>
+    <div class="col-md-2">
+        <label>Đến ngày</label>
+        <input type="date" id="denNgay" class="form-control" />
+    </div>
+    <div class="col-md-2">
+        <label>Mã hóa đơn</label>
+        <input type="text" id="maPT" class="form-control" placeholder="VD: PT2026..." />
+    </div>
+    <div class="col-md-2">
+        <label>Mã KH</label>
+        <input type="text" id="maKH" class="form-control" placeholder="VD: KH001" />
+    </div>
+    <div class="col-md-2">
+        <label>Mã NV</label>
+        <input type="text" id="maNguoiLap" class="form-control" placeholder="VD: NV001" />
+    </div>
+    <div class="col-md-2 d-flex align-items-end">
+        <button id="btnLoc" class="btn btn-primary mr-2">Lọc</button>
+        <button id="btnExportExcel" class="btn btn-success">Xuất Excel</button>
+    </div>
+</div>
+
 <table class="table table-bordered" id="phieuThuTable">
     <thead>
         <tr>
@@ -18,6 +45,11 @@
     </thead>
     <tbody id="phieuThuList"></tbody>
 </table>
+
+<div class="d-flex justify-content-between align-items-center mt-2 mb-3">
+    <small id="paginationInfo" class="text-muted"></small>
+    <ul class="pagination mb-0" id="pagination"></ul>
+</div>
 
 <div class="modal fade" id="chiTietModal" tabindex="-1" role="dialog" aria-labelledby="chiTietModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
@@ -54,31 +86,116 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     $(document).ready(function () {
-        loadPhieuThuList();
+        let currentPage = 1;
+        let currentTotalPages = 1;
 
-        function loadPhieuThuList() {
+        loadPhieuThuList(1);
+
+        function formatDate(value) {
+            if (!value) return '';
+            const d = new Date(value);
+            return isNaN(d.getTime()) ? '' : d.toLocaleDateString();
+        }
+
+        function safeText(value) {
+            return value ?? '';
+        }
+
+        function currentFilter() {
+            return {
+                dTuNgay: $('#tuNgay').val() || null,
+                dDenNgay: $('#denNgay').val() || null,
+                maPT: $('#maPT').val().trim() || null,
+                maKH: $('#maKH').val().trim() || null,
+                maNguoiLap: $('#maNguoiLap').val().trim() || null
+            };
+        }
+
+        function loadPhieuThuList(page) {
+            currentPage = page || 1;
+            const filter = currentFilter();
+
             $.ajax({
                 url: '@Url.Action("GetPhieuThuList", "PhieuThu")',
                 type: 'GET',
-                success: function (data) {
+                data: {
+                    dTuNgay: filter.dTuNgay,
+                    dDenNgay: filter.dDenNgay,
+                    maPT: filter.maPT,
+                    maKH: filter.maKH,
+                    maNguoiLap: filter.maNguoiLap,
+                    iPage: currentPage
+                },
+                success: function (response) {
+                    const data = response.items || [];
                     var tbody = $('#phieuThuList').empty();
-                    data.forEach(function (pt) {
-                        tbody.append(`
-                            <tr>
-                                <td>${pt.pkSMaPt}</td>
-                                <td>${new Date(pt.dTgLap).toLocaleDateString()}</td>
-                                <td>${pt.nhanVien}</td>
-                                <td>${pt.khachHang}</td>
-                                <td>${pt.sHinhThucTt}</td>
-                                <td>
-                                    <button class="btn btn-info btn-sm" onclick="viewChiTiet('${pt.pkSMaPt}')">Xem chi tiết</button>
-                                </td>
-                            </tr>
-                        `);
-                    });
+                    if (!data || data.length === 0) {
+                        tbody.append(`<tr><td colspan="6" class="text-center">${response.message || 'Không có hóa đơn nào trong khoảng thời gian này'}</td></tr>`);
+                    } else {
+                        data.forEach(function (pt) {
+                            tbody.append(`
+                                <tr>
+                                    <td>${safeText(pt.pkSMaPt)}</td>
+                                    <td>${formatDate(pt.dTgLap)}</td>
+                                    <td>${safeText(pt.nhanVien)}</td>
+                                    <td>${safeText(pt.khachHang)}</td>
+                                    <td>${safeText(pt.sHinhThucTt)}</td>
+                                    <td>
+                                        <button class="btn btn-info btn-sm" onclick="viewChiTiet('${pt.pkSMaPt}')">Xem chi tiết</button>
+                                    </td>
+                                </tr>
+                            `);
+                        });
+                    }
+
+                    renderPagination(response.currentPage || 1, response.totalPages || 1, response.totalItems || 0);
                 }
             });
         }
+
+        function renderPagination(page, totalPages, totalItems) {
+            currentTotalPages = totalPages;
+            $('#paginationInfo').text(`Tổng: ${totalItems} hóa đơn | Trang ${page}/${totalPages}`);
+            const pagination = $('#pagination').empty();
+
+            const prevDisabled = page <= 1 ? 'disabled' : '';
+            pagination.append(`<li class="page-item ${prevDisabled}"><a class="page-link" href="#" data-page="${page - 1}">Trước</a></li>`);
+
+            const start = Math.max(1, page - 2);
+            const end = Math.min(totalPages, page + 2);
+            for (let i = start; i <= end; i++) {
+                const active = i === page ? 'active' : '';
+                pagination.append(`<li class="page-item ${active}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`);
+            }
+
+            const nextDisabled = page >= totalPages ? 'disabled' : '';
+            pagination.append(`<li class="page-item ${nextDisabled}"><a class="page-link" href="#" data-page="${page + 1}">Sau</a></li>`);
+        }
+
+        $('#btnLoc').on('click', function () {
+            loadPhieuThuList(1);
+        });
+
+        $('#btnExportExcel').on('click', function () {
+            const filter = currentFilter();
+            const query = new URLSearchParams({
+                dTuNgay: filter.dTuNgay || '',
+                dDenNgay: filter.dDenNgay || '',
+                maPT: filter.maPT || '',
+                maKH: filter.maKH || '',
+                maNguoiLap: filter.maNguoiLap || ''
+            });
+
+            window.location.href = '@Url.Action("ExportPhieuThuExcel", "PhieuThu")' + '?' + query.toString();
+        });
+
+        $(document).on('click', '#pagination .page-link', function (e) {
+            e.preventDefault();
+            const p = parseInt($(this).data('page'));
+            if (!isNaN(p) && p >= 1 && p <= currentTotalPages) {
+                loadPhieuThuList(p);
+            }
+        });
 
         window.viewChiTiet = function (maPT) {
             $.ajax({
@@ -87,37 +204,46 @@
                 data: { maPT: maPT },
                 success: function (data) {
                     $('#chiTietInfo').html(`
-                        <p><strong>Mã phiếu thu:</strong> ${data.maPT}</p>
-                        <p><strong>Khách hàng:</strong> ${data.khachHang}</p>
-                        <p><strong>Ngày lập:</strong> ${new Date(data.ngayLap).toLocaleDateString()}</p>
-                        <p><strong>Hình thức TT:</strong> ${data.hinhThucTT}</p>
+                        <p><strong>Mã phiếu thu:</strong> ${safeText(data.maPT)}</p>
+                        <p><strong>Khách hàng:</strong> ${safeText(data.khachHang)}</p>
+                        <p><strong>Ngày lập:</strong> ${formatDate(data.ngayLap)}</p>
+                        <p><strong>Hình thức TT:</strong> ${safeText(data.hinhThucTT)}</p>
                     `);
 
                     var tbody = $('#chiTietList').empty();
-                    data.chiTiet.forEach(function (ct) {
-                        tbody.append(`
-                            <tr>
-                                <td>${ct.pkFkSMaSp}</td>
-                                <td>${ct.sanPham}</td>
-                                <td>${ct.iSl}</td>
-                                <td>${ct.donGiaBan}</td>
-                                <td>${ct.thanhTien}</td>
-                            </tr>
-                        `);
-                    });
+                    if (!data.chiTiet || data.chiTiet.length === 0) {
+                        tbody.append('<tr><td colspan="5" class="text-center">Không có chi tiết</td></tr>');
+                    } else {
+                        data.chiTiet.forEach(function (ct) {
+                            tbody.append(`
+                                <tr>
+                                    <td>${safeText(ct.pkFkSMaSp)}</td>
+                                    <td>${safeText(ct.sanPham)}</td>
+                                    <td>${ct.iSl ?? 0}</td>
+                                    <td>${ct.donGiaBan ?? 0}</td>
+                                    <td>${ct.thanhTien ?? 0}</td>
+                                </tr>
+                            `);
+                        });
+                    }
 
                     $('#chiTietModal').modal('show');
+                },
+                error: function (xhr) {
+                    const message = xhr.responseJSON?.message || 'Không tải được chi tiết hóa đơn.';
+                    showMessage('alert-danger', message);
                 }
             });
         };
+
         function showMessage(className, message) {
             $('#message').removeClass('alert-success alert-danger')
                 .addClass(className).text(message).show();
             setTimeout(() => $('#message').hide(), 3000);
         }
-             $(document).on('click', '.close, .btn-secondary', function () {
-        console.log("Nút đóng được click");
-        $('#chiTietModal').modal('hide'); 
-    });
+
+        $(document).on('click', '.close, .btn-secondary', function () {
+            $('#chiTietModal').modal('hide');
+        });
     });
 </script>

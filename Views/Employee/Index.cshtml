@@ -1,0 +1,368 @@
+@{
+    ViewData["Title"] = "Quản lý nhân viên";
+}
+
+<div class="container mt-4">
+    <h2 class="mb-4 text-primary">Quản lý nhân viên</h2>
+
+    <div id="message" class="alert" style="display:none;"></div>
+
+    <button type="button" class="btn btn-primary mb-3" data-toggle="modal" data-target="#nhanVienModal" onclick="clearForm()">
+        Thêm nhân viên
+    </button>
+
+    <div class="input-group mb-3" style="max-width: 300px;">
+        <input type="text" id="searchInput" class="form-control" placeholder="Nhập tên nhân viên">
+        <div class="input-group-append">
+            <span class="input-group-text"><i class="fas fa-search"></i></span>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-bordered table-hover mb-0" id="nhanVienTable">
+                <thead class="bg-primary text-white">
+                    <tr>
+                        <th>Mã NV</th>
+                        <th>Họ tên</th>
+                        <th>Ngày sinh</th>
+                        <th>CCCD</th>
+                        <th>SĐT</th>
+                        <th>Ngày vào làm</th>
+                        <th>Tài khoản</th>
+                        <th>Chức vụ</th>
+                        <th>Trạng thái</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody id="nhanVienList"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="modal fade" id="nhanVienModal" tabindex="-1" role="dialog" aria-labelledby="nhanVienModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="nhanVienModalLabel">Thêm/Sửa nhân viên</h5>
+                </div>
+                <div class="modal-body">
+                    <form id="nhanVienForm">
+                        <div class="form-group">
+                            <label class="font-weight-bold">Mã nhân viên</label>
+                            <input type="text" id="maNV" class="form-control" required />
+                        </div>
+                        <div class="form-group">
+                            <label class="font-weight-bold">Họ tên</label>
+                            <input type="text" id="hoTen" class="form-control" required />
+                        </div>
+                        <div class="form-group">
+                            <label class="font-weight-bold">Ngày sinh</label>
+                            <input type="date" id="ngaySinh" class="form-control" required />
+                        </div>
+                        <div class="form-group">
+                            <label class="font-weight-bold">CCCD</label>
+                            <input type="text" id="cccd" class="form-control" required />
+                        </div>
+                        <div class="form-group">
+                            <label class="font-weight-bold">SĐT</label>
+                            <input type="text" id="sdt" class="form-control" required />
+                        </div>
+                        <div class="form-group">
+                            <label class="font-weight-bold">Ngày vào làm</label>
+                            <input type="date" id="ngayVaoLam" class="form-control" required />
+                        </div>
+
+                        <div class="form-group form-check mt-2">
+                            <input type="checkbox" class="form-check-input" id="taoTaiKhoanMoi" />
+                            <label class="form-check-label" for="taoTaiKhoanMoi">Tạo tài khoản mới cho nhân viên</label>
+                        </div>
+
+                        <div id="taiKhoanMoiSection" style="display:none;">
+                            <div class="form-group">
+                                <label class="font-weight-bold">Tên đăng nhập mới</label>
+                                <input type="text" id="tenDangNhapMoi" class="form-control" />
+                            </div>
+                            <div class="form-group">
+                                <label class="font-weight-bold">Mật khẩu mới</label>
+                                <input type="password" id="matKhauMoi" class="form-control" />
+                            </div>
+                            <div class="form-group">
+                                <label class="font-weight-bold">Quyền</label>
+                                <select id="maQuyenMoi" class="form-control"></select>
+                            </div>
+                        </div>
+
+                        <div id="taiKhoanCuSection">
+                            <div class="form-group">
+                                <label class="font-weight-bold">Tài khoản</label>
+                                <select id="maTK" class="form-control" required></select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="font-weight-bold">Chức vụ</label>
+                            <select id="maCV" class="form-control" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label class="font-weight-bold">Trạng thái</label>
+                            <select id="trangThai" class="form-control" required>
+                                <option value="true">Hoạt động</option>
+                                <option value="false">Không hoạt động</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
+                    <button type="button" class="btn btn-primary" id="saveNhanVien">Lưu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    $(document).ready(function () {
+        let allNhanViens = [];
+
+        loadNhanVienList();
+        loadDropdownData();
+        loadQuyenDropdown();
+
+        function formatDate(value) {
+            if (!value) return '';
+            const d = new Date(value);
+            return isNaN(d.getTime()) ? '' : d.toLocaleDateString();
+        }
+
+        function toInputDate(value) {
+            if (!value) return '';
+            const d = new Date(value);
+            return isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
+        }
+
+        function safeText(value) {
+            return value ?? '';
+        }
+
+        function loadNhanVienList() {
+            $.ajax({
+                url: '@Url.Action("GetEmployeeList", "Employee")',
+                type: 'GET',
+                success: function (data) {
+                    allNhanViens = data;
+                    renderNhanVienList(data);
+                },
+                error: function (xhr, status, error) {
+                    console.log("Error loading employees: " + error);
+                }
+            });
+        }
+
+        function renderNhanVienList(data) {
+            var tbody = $('#nhanVienList').empty();
+            if (data && data.length > 0) {
+                data.forEach(function (nv) {
+                    tbody.append(`
+                        <tr>
+                            <td>${safeText(nv.pkSMaNv)}</td>
+                            <td>${safeText(nv.sHoTen)}</td>
+                            <td>${formatDate(nv.dNgaySinh)}</td>
+                            <td>${safeText(nv.sCccd)}</td>
+                            <td>${safeText(nv.sSdt)}</td>
+                            <td>${formatDate(nv.dNgayVaoLam)}</td>
+                            <td>${safeText(nv.taiKhoan)}</td>
+                            <td>${safeText(nv.chucVu)}</td>
+                            <td>${nv.bTrangThai ? 'Hoạt động' : 'Không hoạt động'}</td>
+                            <td>
+                                <button class="btn btn-warning btn-sm mr-1" onclick="editNhanVien('${nv.pkSMaNv}')">Sửa</button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteNhanVien('${nv.pkSMaNv}')">Xóa</button>
+                            </td>
+                        </tr>
+                    `);
+                });
+            } else {
+                tbody.append('<tr><td colspan="10" class="text-center">Không tìm thấy nhân viên</td></tr>');
+            }
+        }
+
+        $('#searchInput').on('input', function () {
+            var searchTerm = $(this).val().toLowerCase().trim();
+            if (searchTerm === '') {
+                renderNhanVienList(allNhanViens);
+            } else {
+                var filteredNhanViens = allNhanViens.filter(function (nv) {
+                    return (nv.sHoTen || '').toLowerCase().includes(searchTerm);
+                });
+                renderNhanVienList(filteredNhanViens);
+            }
+        });
+
+        function loadDropdownData() {
+            $.ajax({
+                url: '@Url.Action("GetDropdownData", "Employee")',
+                type: 'GET',
+                success: function (data) {
+                    var tkSelect = $('#maTK').empty();
+                    data.accounts.forEach(function (tk) {
+                        tkSelect.append(`<option value="${tk.pkSMaTk}">${tk.sTenTk}</option>`);
+                    });
+
+                    var cvSelect = $('#maCV').empty();
+                    data.chucVus.forEach(function (cv) {
+                        cvSelect.append(`<option value="${cv.pkSMaCv}">${cv.sTenCv}</option>`);
+                    });
+                }
+            });
+        }
+
+        function loadQuyenDropdown() {
+            $.ajax({
+                url: '@Url.Action("GetQuyenDropdown", "Account")',
+                type: 'GET',
+                success: function (data) {
+                    var select = $('#maQuyenMoi').empty();
+                    data.forEach(function (q) {
+                        select.append(`<option value="${q.pkSMaQuyen}">${q.sTenQuyen}</option>`);
+                    });
+                }
+            });
+        }
+
+        $('#taoTaiKhoanMoi').on('change', function () {
+            const createNew = $(this).is(':checked');
+            $('#taiKhoanMoiSection').toggle(createNew);
+            $('#taiKhoanCuSection').toggle(!createNew);
+        });
+
+        window.clearForm = function () {
+            $('#nhanVienForm')[0].reset();
+            $('#maNV').prop('disabled', false);
+            $('#nhanVienModalLabel').text('Thêm nhân viên');
+            $('#taoTaiKhoanMoi').prop('disabled', false).prop('checked', false).trigger('change');
+        };
+
+        $('#saveNhanVien').click(function () {
+            const createNewAccount = $('#taoTaiKhoanMoi').is(':checked') && !$('#maNV').prop('disabled');
+
+            if (createNewAccount) {
+                var request = {
+                    PkSMaNv: $('#maNV').val(),
+                    SHoTen: $('#hoTen').val(),
+                    DNgaySinh: $('#ngaySinh').val(),
+                    SCccd: $('#cccd').val(),
+                    SSdt: $('#sdt').val(),
+                    DNgayVaoLam: $('#ngayVaoLam').val(),
+                    FkSMaCv: $('#maCV').val(),
+                    STenTk: $('#tenDangNhapMoi').val(),
+                    SMk: $('#matKhauMoi').val(),
+                    FkSMaQuyen: $('#maQuyenMoi').val()
+                };
+
+                if (!request.STenTk || !request.SMk || request.SMk.length < 8) {
+                    showMessage('alert-danger', 'Tên đăng nhập là bắt buộc và mật khẩu phải có ít nhất 8 ký tự.');
+                    return;
+                }
+
+                $.ajax({
+                    url: '@Url.Action("CreateEmployeeWithAccount", "Employee")',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(request),
+                    success: function (response) {
+                        showMessage(response.success ? 'alert-success' : 'alert-danger', response.message);
+                        if (response.success) {
+                            $('#nhanVienModal').modal('hide');
+                            loadNhanVienList();
+                            loadDropdownData();
+                            $('#searchInput').val('');
+                        }
+                    }
+                });
+
+                return;
+            }
+
+            var nhanVien = {
+                PkSMaNv: $('#maNV').val(),
+                SHoTen: $('#hoTen').val(),
+                DNgaySinh: $('#ngaySinh').val(),
+                SCccd: $('#cccd').val(),
+                SSdt: $('#sdt').val(),
+                DNgayVaoLam: $('#ngayVaoLam').val(),
+                FkSMaTk: $('#maTK').val(),
+                FkSMaCv: $('#maCV').val(),
+                BTrangThai: $('#trangThai').val() === 'true'
+            };
+
+            var url = $('#maNV').prop('disabled') ? '@Url.Action("EditEmployee", "Employee")' : '@Url.Action("AddEmployee", "Employee")';
+            $.ajax({
+                url: url,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(nhanVien),
+                success: function (response) {
+                    showMessage(response.success ? 'alert-success' : 'alert-danger', response.message);
+                    if (response.success) {
+                        $('#nhanVienModal').modal('hide');
+                        loadNhanVienList();
+                        $('#searchInput').val('');
+                    }
+                }
+            });
+        });
+
+        window.editNhanVien = function (maNV) {
+            $.ajax({
+                url: '@Url.Action("GetEmployeeList", "Employee")',
+                type: 'GET',
+                success: function (data) {
+                    var nv = data.find(x => x.pkSMaNv === maNV);
+                    if (!nv) {
+                        showMessage('alert-danger', 'Không tìm thấy nhân viên!');
+                        return;
+                    }
+
+                    $('#maNV').val(nv.pkSMaNv).prop('disabled', true);
+                    $('#hoTen').val(safeText(nv.sHoTen));
+                    $('#ngaySinh').val(toInputDate(nv.dNgaySinh));
+                    $('#cccd').val(safeText(nv.sCccd));
+                    $('#sdt').val(safeText(nv.sSdt));
+                    $('#ngayVaoLam').val(toInputDate(nv.dNgayVaoLam));
+                    $('#maTK').val(nv.fkSMaTk || '');
+                    $('#maCV').val(nv.fkSMaCv || '');
+                    $('#trangThai').val((nv.bTrangThai ?? false).toString());
+                    $('#nhanVienModalLabel').text('Sửa nhân viên');
+                    $('#taoTaiKhoanMoi').prop('checked', false).prop('disabled', true).trigger('change');
+                    $('#nhanVienModal').modal('show');
+                }
+            });
+        };
+
+        window.deleteNhanVien = function (maNV) {
+            if (confirm('Bạn có chắc muốn xóa nhân viên này không?')) {
+                $.ajax({
+                    url: '@Url.Action("DeleteEmployee", "Employee")',
+                    type: 'POST',
+                    data: { maNV: maNV },
+                    success: function (response) {
+                        showMessage(response.success ? 'alert-success' : 'alert-danger', response.message);
+                        if (response.success) {
+                            loadNhanVienList();
+                            $('#searchInput').val('');
+                        }
+                    }
+                });
+            }
+        };
+
+        function showMessage(className, message) {
+            $('#message').removeClass('alert-success alert-danger')
+                .addClass(className).text(message).show();
+            setTimeout(() => $('#message').hide(), 3000);
+        }
+    });
+</script>

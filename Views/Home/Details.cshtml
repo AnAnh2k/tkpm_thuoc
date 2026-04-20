@@ -1,4 +1,4 @@
-﻿@model CNPM.Models.TblSanPham
+@model CNPM.Models.TblSanPham
 
 @{
     ViewData["Title"] = "Chi tiết sản phẩm";
@@ -10,15 +10,15 @@
         <div>
             @if (!User.Identity.IsAuthenticated)
             {
-                <a asp-controller="Account" asp-action="Login" class="btn btn-primary">Đăng nhập</a>
+                <a asp-controller="Auth" asp-action="Login" class="btn btn-primary">Đăng nhập</a>
             }
             else
             {
                 <div class="d-flex align-items-center">
                     <span class="me-3">Xin chào, <strong>@User.Identity.Name</strong></span>
-                    @if (User.IsInRole("Admin"))
+                    @if (User.IsInRole("Q002"))
                     {
-                        <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-primary me-2">Quản lý</a>
+                        <a asp-controller="Home" asp-action="Index" class="btn btn-outline-primary me-2">Quản lý</a>
                     }
                 </div>
             }

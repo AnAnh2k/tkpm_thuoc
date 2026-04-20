@@ -54,6 +54,16 @@
     $(document).ready(function () {
         loadPhieuXuatKhoList();
 
+        function formatDate(value) {
+            if (!value) return '';
+            const d = new Date(value);
+            return isNaN(d.getTime()) ? '' : d.toLocaleDateString();
+        }
+
+        function safeText(value) {
+            return value ?? '';
+        }
+
         function loadPhieuXuatKhoList() {
             $.ajax({
                 url: '@Url.Action("GetPhieuXuatKhoList", "PhieuXuatKho")',
@@ -63,9 +73,9 @@
                     data.forEach(function (px) {
                         tbody.append(`
                             <tr>
-                                <td>${px.pkSMaPx}</td>
-                                <td>${new Date(px.dTgLap).toLocaleDateString()}</td>
-                                <td>${px.nhanVien}</td>
+                                <td>${safeText(px.pkSMaPx)}</td>
+                                <td>${formatDate(px.dTgLap)}</td>
+                                <td>${safeText(px.nhanVien)}</td>
                                 <td>
                                     <button class="btn btn-info btn-sm" onclick="viewChiTiet('${px.pkSMaPx}')">Xem chi tiết</button>
                                 </td>
@@ -83,35 +93,44 @@
                 data: { maPX: maPX },
                 success: function (data) {
                     $('#chiTietInfo').html(`
-                        <p><strong>Mã phiếu xuất:</strong> ${data.maPX}</p>
-                        <p><strong>Nhân viên:</strong> ${data.nhanVien}</p>
-                        <p><strong>Ngày lập:</strong> ${new Date(data.ngayLap).toLocaleDateString()}</p>
+                        <p><strong>Mã phiếu xuất:</strong> ${safeText(data.maPX)}</p>
+                        <p><strong>Nhân viên:</strong> ${safeText(data.nhanVien)}</p>
+                        <p><strong>Ngày lập:</strong> ${formatDate(data.ngayLap)}</p>
                     `);
 
                     var tbody = $('#chiTietList').empty();
-                    data.chiTiet.forEach(function (ct) {
-                        tbody.append(`
-                            <tr>
-                                <td>${ct.pkFkSMaSp}</td>
-                                <td>${ct.sanPham}</td>
-                                <td>${ct.iSlyc}</td>
-                                <td>${ct.iSlx}</td>
-                                <td>${ct.sGhiChu || ''}</td>
-                            </tr>
-                        `);
-                    });
+                    if (!data.chiTiet || data.chiTiet.length === 0) {
+                        tbody.append('<tr><td colspan="5" class="text-center">Không có chi tiết</td></tr>');
+                    } else {
+                        data.chiTiet.forEach(function (ct) {
+                            tbody.append(`
+                                <tr>
+                                    <td>${safeText(ct.pkFkSMaSp)}</td>
+                                    <td>${safeText(ct.sanPham)}</td>
+                                    <td>${ct.iSlyc ?? 0}</td>
+                                    <td>${ct.iSlx ?? 0}</td>
+                                    <td>${safeText(ct.sGhiChu)}</td>
+                                </tr>
+                            `);
+                        });
+                    }
 
                     $('#chiTietModal').modal('show');
+                },
+                error: function (xhr) {
+                    const message = xhr.responseJSON?.message || 'Không tải được chi tiết phiếu xuất kho.';
+                    showMessage('alert-danger', message);
                 }
             });
         };
+
         function showMessage(className, message) {
             $('#message').removeClass('alert-success alert-danger')
                 .addClass(className).text(message).show();
             setTimeout(() => $('#message').hide(), 3000);
         }
-          $(document).on('click', '.close, .btn-secondary', function () {
-            console.log("Nút đóng được click");
+
+        $(document).on('click', '.close, .btn-secondary', function () {
             $('#chiTietModal').modal('hide');
         });
     });

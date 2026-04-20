@@ -1,0 +1,117 @@
+@model CNPM.Services.Dtos.HoaDonViewDto
+
+<div class="container mt-4" id="hoa-don-print-area">
+    <h2 class="mb-4 text-primary">Hóa đơn #@Model.PhieuThu.PkSMaPt</h2>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <p class="mb-2"><strong>Khách hàng:</strong> @(Model.PhieuThu.FkSMaKhNavigation?.STenKh ?? "Khách vãng lai")</p>
+            <p class="mb-2"><strong>Ngày lập:</strong> @String.Format("{0:dd/MM/yyyy HH:mm}", Model.PhieuThu.DTgLap)</p>
+            <p class="mb-2"><strong>Hình thức thanh toán:</strong> @Model.PhieuThu.SHinhThucTt</p>
+
+            <table class="table table-bordered table-hover mb-0">
+                <thead class="bg-primary text-white">
+                    <tr>
+                        <th>Sản phẩm</th>
+                        <th>Số lượng</th>
+                        <th>Đơn giá</th>
+                        <th>Thành tiền</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var ct in Model.PhieuThu.TblCtphieuThus)
+                    {
+                        <tr>
+                            <td>@ct.PkFkSMaSpNavigation.STenSp</td>
+                            <td>@ct.ISl</td>
+                            <td>@String.Format("{0:N0}", ct.PkFkSMaSpNavigation.FDonGiaBan)</td>
+                            <td>@String.Format("{0:N0}", (ct.ISl ?? 0) * (ct.PkFkSMaSpNavigation.FDonGiaBan ?? 0))</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3" class="text-right font-weight-bold">Tạm tính</td>
+                        <td>@String.Format("{0:N0}", Model.TongTienTamTinh)</td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="text-right">Mã khuyến mãi</td>
+                        <td>@(string.IsNullOrWhiteSpace(Model.MaKhuyenMai) ? "-" : Model.MaKhuyenMai)</td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="text-right">Khuyến mãi (%)</td>
+                        <td>@String.Format("{0:0.##}", Model.KhuyenMaiPhanTram)%</td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="text-right">Loại giảm trực tiếp</td>
+                        <td>@(string.IsNullOrWhiteSpace(Model.LoaiGiamGia) ? "-" : Model.LoaiGiamGia)</td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="text-right">Giá trị giảm trực tiếp</td>
+                        <td>
+                            @if (string.Equals(Model.LoaiGiamGia, "PHANTRAM", StringComparison.OrdinalIgnoreCase))
+                            {
+                                @String.Format("{0:0.##}%", Model.GiaTriGiamGia)
+                            }
+                            else if (string.Equals(Model.LoaiGiamGia, "VND", StringComparison.OrdinalIgnoreCase))
+                            {
+                                @String.Format("{0:N0}", Model.GiaTriGiamGia)
+                            }
+                            else
+                            {
+                                @:"-"
+                            }
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="text-right">Tiền giảm trực tiếp</td>
+                        <td>-@String.Format("{0:N0}", Model.TienGiamThuCong)</td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="text-right">Tổng tiền giảm</td>
+                        <td>-@String.Format("{0:N0}", Model.TongTienGiam)</td>
+                    </tr>
+                    <tr class="font-weight-bold">
+                        <td colspan="3" class="text-right">Tổng thanh toán</td>
+                        <td>@String.Format("{0:N0}", Model.TongThanhToan)</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <div class="mt-3 no-print">
+        <button type="button" class="btn btn-success" onclick="window.print()">In hóa đơn</button>
+        <button type="button" class="btn btn-outline-primary" onclick="window.print()">Xuất PDF</button>
+        <a href="@Url.Action("ChiTietHoaDon", "Sale", new
+        {
+            maPT = Model.PhieuThu.PkSMaPt,
+            maKhuyenMai = Model.MaKhuyenMai,
+            khuyenMaiPhanTram = Model.KhuyenMaiPhanTram,
+            loaiGiamGia = Model.LoaiGiamGia,
+            giaTriGiamGia = Model.GiaTriGiamGia,
+            tienGiamThuCong = Model.TienGiamThuCong,
+            tongTienTamTinh = Model.TongTienTamTinh,
+            tongTienGiam = Model.TongTienGiam,
+            tongThanhToan = Model.TongThanhToan
+        })" class="btn btn-info">Xem chi tiết hóa đơn</a>
+    </div>
+</div>
+
+<style>
+@@media print {
+    .no-print,
+    .navbar,
+    footer {
+        display: none !important;
+    }
+
+    #hoa-don-print-area {
+        margin: 0;
+        width: 100%;
+    }
+}
+</style>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>

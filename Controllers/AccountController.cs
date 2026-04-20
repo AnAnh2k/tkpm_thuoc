@@ -1,113 +1,67 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using CNPM.Models;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Security.Claims;
-using Microsoft.AspNetCore.Authentication;
+using CNPM.Services;
 
-namespace CNPM.Controllers
+namespace CNPM.Controllers;
+
+[Authorize]
+public class AccountController : Controller
 {
-    public class AccountController : Controller
+    private readonly IAccountService _accountService;
+
+    public AccountController(IAccountService accountService)
     {
-        private readonly PharmacyDbContext _context;
+        _accountService = accountService;
+    }
 
-        public AccountController(PharmacyDbContext context)
+    public IActionResult Index()
+    {
+        return View();
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAccountList()
+    {
+        var accounts = await _accountService.GetAccountListAsync();
+        return Json(accounts);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> AddAccount([FromBody] TblTaiKhoan taiKhoan)
+    {
+        if (!ModelState.IsValid)
         {
-            _context = context;
+            return Json(new { success = false, message = "Dữ liệu không hợp lệ!" });
         }
 
-        [HttpGet]
-        public IActionResult Login()
+        var result = await _accountService.AddAccountAsync(taiKhoan);
+        return Json(new { success = result.Success, message = result.Message });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> EditAccount([FromBody] TblTaiKhoan taiKhoan)
+    {
+        if (!ModelState.IsValid)
         {
-            return View();
+            return Json(new { success = false, message = "Dữ liệu không hợp lệ!" });
         }
 
-        [HttpPost]
-        public async Task<IActionResult> Login(string username, string password)
-        {
-            var taiKhoan = await _context.TblTaiKhoans
-                .Include(tk => tk.FkSMaQuyenNavigation)
-                .FirstOrDefaultAsync(tk => tk.STenTk == username && tk.SMk == password);
+        var result = await _accountService.EditAccountAsync(taiKhoan);
+        return Json(new { success = result.Success, message = result.Message });
+    }
 
-            if (taiKhoan == null)
-            {
-                ViewBag.ErrorMessage = "Tên đăng nhập hoặc mật khẩu không đúng!";
-                return View();
-            }
+    [HttpPost]
+    public async Task<IActionResult> DeleteAccount(string maTK)
+    {
+        var result = await _accountService.DeleteAccountAsync(maTK);
+        return Json(new { success = result.Success, message = result.Message });
+    }
 
-            // Thêm các Claim, gán Role là mã quyền (FK_sMaQuyen)
-            var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.Name, taiKhoan.STenTk),
-                new Claim("MaTK", taiKhoan.PkSMaTk),
-                new Claim(ClaimTypes.Role, taiKhoan.FkSMaQuyen ?? "Unknown"), 
-                new Claim("FkSMaQuyen", taiKhoan.FkSMaQuyen ?? "Unknown") 
-            };
-
-            var identity = new ClaimsIdentity(claims, "CookieAuth");
-            var principal = new ClaimsPrincipal(identity);
-
-            await HttpContext.SignInAsync("CookieAuth", principal);
-            return RedirectToAction("Index", "Home");
-        }
-
-        [HttpGet]
-        public async Task<IActionResult> Logout()
-        {
-            await HttpContext.SignOutAsync("CookieAuth");
-            return RedirectToAction("Index", "Home");
-        }
-
-        [HttpGet]
-        public IActionResult Register()
-        {
-            return View();
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> Register(string tenTK, string matKhau)
-        {
-            if (string.IsNullOrEmpty(tenTK) || string.IsNullOrEmpty(matKhau))
-            {
-                ViewBag.ErrorMessage = "Vui lòng điền đầy đủ tên tài khoản và mật khẩu!";
-                return View();
-            }
-
-            if (await _context.TblTaiKhoans.AnyAsync(tk => tk.STenTk == tenTK))
-            {
-                ViewBag.ErrorMessage = "Tên tài khoản đã được sử dụng!";
-                return View();
-            }
-
-     
-            string maTK;
-            int count = 1;
-            do
-            {
-                maTK = $"TK{count:000}";
-                count++;
-            } while (await _context.TblTaiKhoans.AnyAsync(tk => tk.PkSMaTk == maTK));
-
-            var taiKhoan = new TblTaiKhoan
-            {
-                PkSMaTk = maTK,
-                STenTk = tenTK,
-                SMk = matKhau,
-                FkSMaQuyen = null 
-            };
-
-            _context.TblTaiKhoans.Add(taiKhoan);
-            await _context.SaveChangesAsync();
-
-            TempData["SuccessMessage"] = "Đăng ký tài khoản thành công! Vui lòng đăng nhập.";
-            return RedirectToAction("Login");
-        }
-
-        [HttpGet]
-        public IActionResult AccessDenied()
-        {
-            return View();
-        }
+    [HttpGet]
+    public async Task<IActionResult> GetQuyenDropdown()
+    {
+        var quyens = await _accountService.GetQuyenDropdownAsync();
+        return Json(quyens.Select(q => new { PkSMaQuyen = q.Id, STenQuyen = q.Name }));
     }
 }

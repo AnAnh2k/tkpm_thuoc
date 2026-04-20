@@ -1,4 +1,4 @@
-﻿@model X.PagedList.IPagedList<CNPM.Models.TblSanPham>
+@model X.PagedList.IPagedList<CNPM.Models.TblSanPham>
 @using X.PagedList.Mvc.Core;
 
 @{
@@ -14,14 +14,14 @@
         <div class="d-flex align-items-center gap-3">
             @if (!User.Identity.IsAuthenticated)
             {
-                <a asp-controller="Account" asp-action="Login" class="btn btn-primary px-4 py-2 shadow-sm">Đăng nhập</a>
+                <a asp-controller="Auth" asp-action="Login" class="btn btn-primary px-4 py-2 shadow-sm">Đăng nhập</a>
             }
             else
             {
                 <span class="me-3 fw-medium text-dark">Xin chào, <strong>@User.Identity.Name</strong></span>
-                @if (User.IsInRole("Admin"))
+                @if (User.IsInRole("Q002"))
                 {
-                    <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-primary px-4 py-2 shadow-sm">Quản lý</a>
+                    <a asp-controller="Home" asp-action="Index" class="btn btn-outline-primary px-4 py-2 shadow-sm">Quản lý</a>
                 }
             }
         </div>

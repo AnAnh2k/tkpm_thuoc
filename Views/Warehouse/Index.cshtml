@@ -1,0 +1,410 @@
+@using System.Security.Claims
+@{
+    ViewData["Title"] = "Nghiệp vụ kho";
+    var maNvHienTai = User.FindFirst("MaNV")?.Value ?? string.Empty;
+}
+
+<div class="container mt-4">
+    <h2 class="mb-4 text-primary">Nghiệp vụ kho</h2>
+    <div id="message" class="alert" style="display:none;"></div>
+
+    <div class="row g-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">4.3.2.1 - Lập phiếu yêu cầu nhập hàng</div>
+                <div class="card-body">
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-3">
+                            <input id="pycMaNv" type="hidden" value="@maNvHienTai" />
+                            <input id="pycMaNvText" class="form-control" value="@maNvHienTai" placeholder="Mã NV lập" readonly />
+                        </div>
+                        <div class="col-md-4"><select id="pycMaSp" class="form-control"><option value="">-- Chọn sản phẩm --</option></select></div>
+                        <div class="col-md-3"><input id="pycSoLuong" type="number" min="1" class="form-control" placeholder="Số lượng cần" /></div>
+                        <div class="col-md-2"><button id="btnAddPycItem" class="btn btn-outline-primary w-100">Thêm SP</button></div>
+                    </div>
+                    <table class="table table-sm table-bordered">
+                        <thead><tr><th>Mã SP</th><th>Số lượng cần</th><th></th></tr></thead>
+                        <tbody id="pycItems"></tbody>
+                    </table>
+                    <button id="btnCreatePyc" class="btn btn-primary">Gửi yêu cầu</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">4.3.2.2 - Tạo phiếu nhập kho</div>
+                <div class="card-body">
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-3">
+                            <input id="pnMaNv" type="hidden" value="@maNvHienTai" />
+                            <input id="pnMaNvText" class="form-control" value="@maNvHienTai" placeholder="Mã NV lập" readonly />
+                        </div>
+                        <div class="col-md-4"><input id="pnMaPgh" class="form-control" placeholder="Mã phiếu giao hàng" /></div>
+                        <div class="col-md-3"><button id="btnLoadPgh" class="btn btn-outline-secondary w-100">Tải chi tiết phiếu giao</button></div>
+                    </div>
+                    <table class="table table-sm table-bordered">
+                        <thead><tr><th>Mã SP</th><th>Tên SP</th><th>SL giao</th><th>SL nhập</th><th>Ghi chú</th></tr></thead>
+                        <tbody id="pnItems"></tbody>
+                    </table>
+                    <button id="btnCreatePn" class="btn btn-primary">Xác nhận nhập kho</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">4.3.2.3 - Lập biên bản kiểm kê</div>
+                <div class="card-body">
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-2">
+                            <input id="kkMaNv" type="hidden" value="@maNvHienTai" />
+                            <input id="kkMaNvText" class="form-control" value="@maNvHienTai" placeholder="Mã NV lập" readonly />
+                        </div>
+                        <div class="col-md-3"><input id="kkDiaDiem" class="form-control" placeholder="Địa điểm kiểm" /></div>
+                        <div class="col-md-2"><input id="kkTuNgay" type="datetime-local" class="form-control" /></div>
+                        <div class="col-md-2"><input id="kkDenNgay" type="datetime-local" class="form-control" /></div>
+                        <div class="col-md-3"><input id="kkThanhVien" class="form-control" placeholder="Thành viên (NV001,NV002)" /></div>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input id="kkDieuChinh" class="form-check-input" type="checkbox" />
+                        <label class="form-check-label" for="kkDieuChinh">Điều chỉnh tồn kho theo thực tế</label>
+                    </div>
+                    <table class="table table-sm table-bordered">
+                        <thead><tr><th>Mã SP</th><th>Tên SP</th><th>SL hệ thống</th><th>SL thực tế</th></tr></thead>
+                        <tbody id="kkItems"></tbody>
+                    </table>
+                    <button id="btnCreateKk" class="btn btn-primary">Lưu biên bản kiểm kê</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">4.3.2.4 - Lập biên bản hủy sản phẩm</div>
+                <div class="card-body">
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-2">
+                            <input id="huyMaNv" type="hidden" value="@maNvHienTai" />
+                            <input id="huyMaNvText" class="form-control" value="@maNvHienTai" placeholder="Mã NV lập" readonly />
+                        </div>
+                        <div class="col-md-3"><input id="huyDiaDiem" class="form-control" placeholder="Địa điểm hủy" /></div>
+                        <div class="col-md-2"><input id="huyTuNgay" type="datetime-local" class="form-control" /></div>
+                        <div class="col-md-2"><input id="huyDenNgay" type="datetime-local" class="form-control" /></div>
+                        <div class="col-md-3"><input id="huyThanhVien" class="form-control" placeholder="Thành viên (NV001,NV002)" /></div>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-3"><input id="huyPhuongThuc" class="form-control" placeholder="Phương thức hủy" /></div>
+                        <div class="col-md-3"><select id="huyMaSp" class="form-control"><option value="">-- Chọn sản phẩm --</option></select></div>
+                        <div class="col-md-2"><input id="huySoLuong" type="number" min="1" class="form-control" placeholder="SL hủy" /></div>
+                        <div class="col-md-3"><input id="huyLyDo" class="form-control" placeholder="Lý do hủy" /></div>
+                        <div class="col-md-1"><button id="btnAddHuyItem" class="btn btn-outline-danger w-100">+</button></div>
+                    </div>
+                    <table class="table table-sm table-bordered">
+                        <thead><tr><th>Mã SP</th><th>SL hủy</th><th>Lý do</th><th></th></tr></thead>
+                        <tbody id="huyItems"></tbody>
+                    </table>
+                    <button id="btnCreateHuy" class="btn btn-danger">Xác nhận hủy</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(function () {
+            let tonKho = [];
+            let pycItems = [];
+            let huyItems = [];
+            let pnItems = [];
+
+            let currentMaNv = '@maNvHienTai';
+
+            if (currentMaNv) {
+                applyCurrentMaNv(currentMaNv);
+                initializeDefaults();
+            } else {
+                resolveCurrentContext();
+            }
+
+            loadTonKho();
+
+            function applyCurrentMaNv(maNv) {
+                currentMaNv = maNv || '';
+                $('#pycMaNv').val(currentMaNv);
+                $('#pnMaNv').val(currentMaNv);
+                $('#kkMaNv').val(currentMaNv);
+                $('#huyMaNv').val(currentMaNv);
+
+                $('#pycMaNvText').val(currentMaNv || '');
+                $('#pnMaNvText').val(currentMaNv || '');
+                $('#kkMaNvText').val(currentMaNv || '');
+                $('#huyMaNvText').val(currentMaNv || '');
+            }
+
+            function resolveCurrentContext() {
+                $.ajax({
+                    url: '@Url.Action("CurrentContext", "Auth")',
+                    type: 'GET',
+                    success: function (ctx) {
+                        if (ctx && ctx.maNhanVien) {
+                            applyCurrentMaNv(ctx.maNhanVien);
+                            initializeDefaults();
+                        }
+                    }
+                });
+            }
+
+            function toDateTimeLocal(date) {
+                const pad = (n) => n.toString().padStart(2, '0');
+                return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+            }
+
+            function initializeDefaults() {
+                const now = new Date();
+                const nowLocal = toDateTimeLocal(now);
+
+                if (!$('#kkTuNgay').val()) $('#kkTuNgay').val(nowLocal);
+                if (!$('#kkDenNgay').val()) $('#kkDenNgay').val(nowLocal);
+                if (!$('#huyTuNgay').val()) $('#huyTuNgay').val(nowLocal);
+                if (!$('#huyDenNgay').val()) $('#huyDenNgay').val(nowLocal);
+
+                if (currentMaNv) {
+                    if (!$('#kkThanhVien').val()) $('#kkThanhVien').val(currentMaNv);
+                    if (!$('#huyThanhVien').val()) $('#huyThanhVien').val(currentMaNv);
+                }
+
+                if (!$('#huyPhuongThuc').val()) $('#huyPhuongThuc').val('Tiêu hủy theo quy định');
+            }
+
+            function showMessage(cls, msg) {
+                $('#message').removeClass('alert-success alert-danger').addClass(cls).text(msg).show();
+                setTimeout(() => $('#message').hide(), 3000);
+            }
+
+            function parseMembers(value) {
+                const fromInput = (value || '').split(',').map(x => x.trim()).filter(x => x.length > 0);
+                const members = currentMaNv ? [currentMaNv, ...fromInput] : fromInput;
+                return [...new Set(members)];
+            }
+
+            function getMaNguoiLap() {
+                return currentMaNv || null;
+            }
+
+            function ensureMaNv() {
+                const maNvInput = $('#pycMaNv').val().trim();
+                if (!maNvInput) {
+                    showMessage('alert-danger', 'Thiếu mã nhân viên lập, vui lòng nhập mã NV.');
+                    return false;
+                }
+
+                $('#pnMaNv').val(maNvInput);
+                $('#kkMaNv').val(maNvInput);
+                $('#huyMaNv').val(maNvInput);
+                return true;
+            }
+
+            function loadTonKho() {
+                $.ajax({
+                    url: '@Url.Action("GetTonKhoHienTai", "Warehouse")',
+                    type: 'GET',
+                    success: function (data) {
+                        tonKho = data || [];
+                        renderProductSelect('#pycMaSp');
+                        renderProductSelect('#huyMaSp');
+                        renderKiemKeRows();
+                    },
+                    error: function () {
+                        showMessage('alert-danger', 'Không tải được danh sách tồn kho.');
+                    }
+                });
+            }
+
+            function renderProductSelect(selector) {
+                const s = $(selector).empty();
+                s.append('<option value="">-- Chọn sản phẩm --</option>');
+
+                if (!tonKho || tonKho.length === 0) {
+                    s.append('<option value="" disabled>Không có sản phẩm</option>');
+                    return;
+                }
+
+                tonKho.forEach(x => s.append(`<option value="${x.maSp}">${x.maSp} - ${x.tenSp || ''}</option>`));
+            }
+
+            function renderPycRows() {
+                const tbody = $('#pycItems').empty();
+                pycItems.forEach((x, i) => tbody.append(`<tr><td>${x.fkSMaSp}</td><td>${x.iSl}</td><td><button class="btn btn-sm btn-outline-danger" data-index="${i}" data-kind="pyc">Xóa</button></td></tr>`));
+            }
+
+            function renderHuyRows() {
+                const tbody = $('#huyItems').empty();
+                huyItems.forEach((x, i) => tbody.append(`<tr><td>${x.fkSMaSp}</td><td>${x.iSl}</td><td>${x.sLyDo || ''}</td><td><button class="btn btn-sm btn-outline-danger" data-index="${i}" data-kind="huy">Xóa</button></td></tr>`));
+            }
+
+            function renderPnRows() {
+                const tbody = $('#pnItems').empty();
+                pnItems.forEach((x, i) => {
+                    tbody.append(`<tr>
+                        <td>${x.maSp}</td>
+                        <td>${x.tenSp || ''}</td>
+                        <td>${x.soLuongGiao}</td>
+                        <td><input type="number" min="0" class="form-control form-control-sm pn-sl" data-index="${i}" value="${x.soLuongGiao}" /></td>
+                        <td><input type="text" class="form-control form-control-sm pn-note" data-index="${i}" /></td>
+                    </tr>`);
+                });
+            }
+
+            function renderKiemKeRows() {
+                const tbody = $('#kkItems').empty();
+                tonKho.forEach((x, i) => {
+                    tbody.append(`<tr>
+                        <td>${x.maSp}</td>
+                        <td>${x.tenSp || ''}</td>
+                        <td>${x.soLuongHeThong}</td>
+                        <td><input type="number" min="0" class="form-control form-control-sm kk-sl" data-index="${i}" value="${x.soLuongHeThong}" /></td>
+                    </tr>`);
+                });
+            }
+
+            $('#btnAddPycItem').on('click', function (e) {
+                e.preventDefault();
+                const maSp = $('#pycMaSp').val();
+                const sl = parseInt($('#pycSoLuong').val());
+                if (!maSp || !sl || sl <= 0) {
+                    showMessage('alert-danger', 'Vui lòng chọn sản phẩm và nhập số lượng hợp lệ.');
+                    return;
+                }
+                pycItems.push({ fkSMaSp: maSp, iSl: sl });
+                renderPycRows();
+                $('#pycSoLuong').val('');
+            });
+
+            $('#btnAddHuyItem').on('click', function (e) {
+                e.preventDefault();
+                const maSp = $('#huyMaSp').val();
+                const sl = parseInt($('#huySoLuong').val());
+                const lyDo = $('#huyLyDo').val();
+                if (!maSp || !sl || sl <= 0) {
+                    showMessage('alert-danger', 'Vui lòng chọn sản phẩm hủy và nhập số lượng hợp lệ.');
+                    return;
+                }
+                huyItems.push({ fkSMaSp: maSp, iSl: sl, sLyDo: lyDo });
+                renderHuyRows();
+                $('#huySoLuong').val('');
+                $('#huyLyDo').val('');
+            });
+
+            $(document).on('click', 'button[data-kind="pyc"]', function () {
+                pycItems.splice(parseInt($(this).data('index')), 1);
+                renderPycRows();
+            });
+
+            $(document).on('click', 'button[data-kind="huy"]', function () {
+                huyItems.splice(parseInt($(this).data('index')), 1);
+                renderHuyRows();
+            });
+
+            $('#btnCreatePyc').on('click', function () {
+                $.ajax({
+                    url: '@Url.Action("CreateRequest", "Warehouse")',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ fkSMaNguoiLap: getMaNguoiLap(), items: pycItems }),
+                    success: r => showMessage(r.success ? 'alert-success' : 'alert-danger', r.message)
+                });
+            });
+
+            $('#btnLoadPgh').on('click', function (e) {
+                e.preventDefault();
+                const maPgh = $('#pnMaPgh').val();
+                if (!maPgh) {
+                    showMessage('alert-danger', 'Vui lòng nhập mã phiếu giao hàng.');
+                    return;
+                }
+
+                $.ajax({
+                    url: '@Url.Action("GetChiTietPhieuGiao", "Warehouse")',
+                    type: 'GET',
+                    data: { maPgh: maPgh },
+                    success: function (data) {
+                        pnItems = data || [];
+                        renderPnRows();
+                        if (pnItems.length === 0) {
+                            showMessage('alert-danger', 'Không có chi tiết phiếu giao hàng phù hợp.');
+                        }
+                    },
+                    error: function () {
+                        showMessage('alert-danger', 'Không tải được chi tiết phiếu giao hàng.');
+                    }
+                });
+            });
+
+            $('#btnCreatePn').on('click', function () {
+                const items = [];
+                $('.pn-sl').each(function () {
+                    const i = parseInt($(this).data('index'));
+                    const sl = parseInt($(this).val()) || 0;
+                    const note = $(`.pn-note[data-index='${i}']`).val();
+                    if (sl > 0) {
+                        items.push({ fkSMaSp: pnItems[i].maSp, iSl: sl, sGhiChu: note });
+                    }
+                });
+
+                $.ajax({
+                    url: '@Url.Action("CreateImport", "Warehouse")',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ fkSMaPgh: $('#pnMaPgh').val(), fkSMaNguoiLap: getMaNguoiLap(), items: items }),
+                    success: r => { showMessage(r.success ? 'alert-success' : 'alert-danger', r.message); if (r.success) loadTonKho(); }
+                });
+            });
+
+            $('#btnCreateKk').on('click', function () {
+                const items = [];
+                $('.kk-sl').each(function () {
+                    const i = parseInt($(this).data('index'));
+                    const sl = parseInt($(this).val()) || 0;
+                    items.push({ fkSMaSp: tonKho[i].maSp, iSl: sl });
+                });
+
+                $.ajax({
+                    url: '@Url.Action("CreateKiemKe", "Warehouse")',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        fkSMaNguoiLap: getMaNguoiLap(),
+                        sDiaDiemKiem: $('#kkDiaDiem').val(),
+                        dTgBatDau: $('#kkTuNgay').val(),
+                        dTgKetThuc: $('#kkDenNgay').val(),
+                        thanhVienIds: parseMembers($('#kkThanhVien').val()),
+                        dieuChinhTonKho: $('#kkDieuChinh').is(':checked'),
+                        items: items
+                    }),
+                    success: r => { showMessage(r.success ? 'alert-success' : 'alert-danger', r.message); if (r.success) loadTonKho(); }
+                });
+            });
+
+            $('#btnCreateHuy').on('click', function () {
+                $.ajax({
+                    url: '@Url.Action("CreateHuy", "Warehouse")',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        fkSMaNguoiLap: getMaNguoiLap(),
+                        sDiaDiemHuy: $('#huyDiaDiem').val(),
+                        dTgBatDau: $('#huyTuNgay').val(),
+                        dTgKetThuc: $('#huyDenNgay').val(),
+                        sPhuongThucHuy: $('#huyPhuongThuc').val(),
+                        thanhVienIds: parseMembers($('#huyThanhVien').val()),
+                        items: huyItems
+                    }),
+                    success: r => { showMessage(r.success ? 'alert-success' : 'alert-danger', r.message); if (r.success) { huyItems = []; renderHuyRows(); loadTonKho(); } }
+                });
+            });
+        });
+    </script>
+}

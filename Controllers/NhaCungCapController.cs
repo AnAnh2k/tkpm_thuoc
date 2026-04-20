@@ -1,18 +1,18 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using CNPM.Models;
-using System.Linq;
-using System.Threading.Tasks;
+using CNPM.Services;
 
-[Authorize] 
+namespace CNPM.Controllers;
+
+[Authorize]
 public class NhaCungCapController : Controller
 {
-    private readonly PharmacyDbContext _context;
+    private readonly INhaCungCapService _nhaCungCapService;
 
-    public NhaCungCapController(PharmacyDbContext context)
+    public NhaCungCapController(INhaCungCapService nhaCungCapService)
     {
-        _context = context;
+        _nhaCungCapService = nhaCungCapService;
     }
 
     public IActionResult Index()
@@ -23,17 +23,7 @@ public class NhaCungCapController : Controller
     [HttpGet]
     public async Task<IActionResult> GetNhaCungCapList()
     {
-        var nhaCungCaps = await _context.TblNhaCungCaps
-            .Select(ncc => new
-            {
-                ncc.PkSMaNcc,
-                ncc.STenNcc,
-                ncc.SDiaChi,
-                ncc.SSdt,
-                ncc.SSoTk
-            })
-            .ToListAsync();
-
+        var nhaCungCaps = await _nhaCungCapService.GetNhaCungCapListAsync();
         return Json(nhaCungCaps);
     }
 
@@ -45,14 +35,8 @@ public class NhaCungCapController : Controller
             return Json(new { success = false, message = "Dữ liệu không hợp lệ!" });
         }
 
-        if (await _context.TblNhaCungCaps.AnyAsync(ncc => ncc.PkSMaNcc == nhaCungCap.PkSMaNcc))
-        {
-            return Json(new { success = false, message = "Mã nhà cung cấp đã tồn tại!" });
-        }
-
-        _context.TblNhaCungCaps.Add(nhaCungCap);
-        await _context.SaveChangesAsync();
-        return Json(new { success = true, message = "Thêm nhà cung cấp thành công!" });
+        var result = await _nhaCungCapService.AddNhaCungCapAsync(nhaCungCap);
+        return Json(new { success = result.Success, message = result.Message });
     }
 
     [HttpPost]
@@ -63,36 +47,14 @@ public class NhaCungCapController : Controller
             return Json(new { success = false, message = "Dữ liệu không hợp lệ!" });
         }
 
-        var existingNhaCungCap = await _context.TblNhaCungCaps
-            .FirstOrDefaultAsync(ncc => ncc.PkSMaNcc == nhaCungCap.PkSMaNcc);
-
-        if (existingNhaCungCap == null)
-        {
-            return Json(new { success = false, message = "Không tìm thấy nhà cung cấp!" });
-        }
-
-        existingNhaCungCap.STenNcc = nhaCungCap.STenNcc;
-        existingNhaCungCap.SDiaChi = nhaCungCap.SDiaChi;
-        existingNhaCungCap.SSdt = nhaCungCap.SSdt;
-        existingNhaCungCap.SSoTk = nhaCungCap.SSoTk;
-
-        await _context.SaveChangesAsync();
-        return Json(new { success = true, message = "Sửa nhà cung cấp thành công!" });
+        var result = await _nhaCungCapService.EditNhaCungCapAsync(nhaCungCap);
+        return Json(new { success = result.Success, message = result.Message });
     }
 
     [HttpPost]
     public async Task<IActionResult> DeleteNhaCungCap(string maNCC)
     {
-        var nhaCungCap = await _context.TblNhaCungCaps
-            .FirstOrDefaultAsync(ncc => ncc.PkSMaNcc == maNCC);
-
-        if (nhaCungCap == null)
-        {
-            return Json(new { success = false, message = "Không tìm thấy nhà cung cấp!" });
-        }
-
-        _context.TblNhaCungCaps.Remove(nhaCungCap);
-        await _context.SaveChangesAsync();
-        return Json(new { success = true, message = "Xóa nhà cung cấp thành công!" });
+        var result = await _nhaCungCapService.DeleteNhaCungCapAsync(maNCC);
+        return Json(new { success = result.Success, message = result.Message });
     }
 }

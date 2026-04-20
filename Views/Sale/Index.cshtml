@@ -1,0 +1,293 @@
+@model List<CNPM.Models.TblSanPham>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-primary mb-0">Lập hóa đơn</h2>
+        <a class="btn btn-outline-info" href="@Url.Action("Index", "PhieuThu")">Xem lịch sử hóa đơn</a>
+    </div>
+
+    <div id="error-message" class="alert alert-danger" style="display:none;"></div>
+    <div id="success-message" class="alert alert-success" style="display:none;"></div>
+
+    <form id="banHangForm">
+        <div class="form-group position-relative">
+            <label class="font-weight-bold">Chọn khách hàng (tùy chọn)</label>
+            <input type="text" id="searchKhachHang" class="form-control" placeholder="Nhập mã hoặc tên khách hàng (để trống nếu khách vãng lai)" />
+            <input type="hidden" name="maKH" id="maKH" />
+            <ul id="khachHangList" class="list-group" style="display:none; position:absolute; z-index:1000; max-height:200px; overflow-y:auto; width:100%;"></ul>
+        </div>
+
+        <div class="form-group position-relative">
+            <label class="font-weight-bold">Tìm sản phẩm</label>
+            <input type="text" id="searchSanPham" class="form-control" placeholder="Nhập mã hoặc tên sản phẩm" />
+            <ul id="sanPhamList" class="list-group" style="display:none; position:absolute; z-index:1000; max-height:200px; overflow-y:auto; width:100%;"></ul>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <table class="table table-bordered table-hover mb-0" id="sanPhamTable">
+                    <thead class="bg-primary text-white">
+                        <tr>
+                            <th>Tên sản phẩm</th>
+                            <th>Tồn kho</th>
+                            <th>Đơn giá</th>
+                            <th>Số lượng xuất</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="selectedSanPhams"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="form-group mt-3">
+            <label class="font-weight-bold">Hình thức thanh toán</label>
+            <select name="hinhThucTt" id="hinhThucTt" class="form-control">
+                <option value="Tiền mặt">Tiền mặt</option>
+                <option value="Chuyển khoản">Chuyển khoản</option>
+            </select>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group col-md-4">
+                <label class="font-weight-bold">Mã khuyến mãi (tùy chọn)</label>
+                <input type="text" name="maKhuyenMai" id="maKhuyenMai" class="form-control" placeholder="Ví dụ: KM5, KM10, KM15" />
+                <small class="form-text text-muted">Mã mặc định: `KM5`, `KM10`, `KM15`.</small>
+            </div>
+            <div class="form-group col-md-4">
+                <label class="font-weight-bold">Loại giảm giá trực tiếp</label>
+                <select name="loaiGiamGia" id="loaiGiamGia" class="form-control">
+                    <option value="">Không áp dụng</option>
+                    <option value="PHANTRAM">Phần trăm (%)</option>
+                    <option value="VND">Số tiền (VNĐ)</option>
+                </select>
+            </div>
+            <div class="form-group col-md-4">
+                <label class="font-weight-bold">Giá trị giảm giá</label>
+                <input type="number" name="giaTriGiamGia" id="giaTriGiamGia" class="form-control" min="0" step="0.01" value="0" />
+                <small class="form-text text-muted">Nhân viên thường tối đa 50% giá trị đơn hàng.</small>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="font-weight-bold">Ghi chú xuất kho (tùy chọn)</label>
+            <input type="text" name="ghiChu" id="ghiChu" class="form-control" placeholder="Nhập ghi chú..." />
+        </div>
+
+        <div class="card mt-3 mb-3">
+            <div class="card-body py-2">
+                <div class="d-flex justify-content-between"><span>Tạm tính:</span><strong id="tongTamTinh">0</strong></div>
+                <div class="d-flex justify-content-between"><span>Tiền giảm khuyến mãi:</span><strong id="tienGiamKm">0</strong></div>
+                <div class="d-flex justify-content-between"><span>Tiền giảm trực tiếp:</span><strong id="tienGiamTrucTiep">0</strong></div>
+                <div class="d-flex justify-content-between"><span>Tổng tiền giảm:</span><strong id="tongTienGiam">0</strong></div>
+                <div class="d-flex justify-content-between"><span>Tổng thanh toán:</span><strong id="tongThanhToan">0</strong></div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary mt-1">Xuất kho & Lập hóa đơn</button>
+    </form>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    $(document).ready(function () {
+        const khuyenMaiMap = {
+            KM5: 5,
+            KM10: 10,
+            KM15: 15
+        };
+
+        function toNumber(value) {
+            const n = parseFloat(value);
+            return isNaN(n) ? 0 : n;
+        }
+
+        function updateTongTien() {
+            let tongTamTinh = 0;
+            $('#selectedSanPhams tr').each(function () {
+                const soLuong = toNumber($(this).find('.so-luong-xuat').val());
+                const donGia = toNumber($(this).find('.don-gia-ban').data('gia'));
+                tongTamTinh += soLuong * donGia;
+            });
+
+            const maKhuyenMai = ($('#maKhuyenMai').val() || '').trim().toUpperCase();
+            const kmPhanTram = khuyenMaiMap[maKhuyenMai] || 0;
+            const tienGiamKm = tongTamTinh * kmPhanTram / 100;
+
+            const loaiGiamGia = ($('#loaiGiamGia').val() || '').toUpperCase();
+            const giaTriGiamGia = Math.max(0, toNumber($('#giaTriGiamGia').val()));
+            let tienGiamTrucTiep = 0;
+
+            if (loaiGiamGia === 'PHANTRAM') {
+                tienGiamTrucTiep = tongTamTinh * Math.min(100, giaTriGiamGia) / 100;
+            } else if (loaiGiamGia === 'VND') {
+                tienGiamTrucTiep = Math.min(giaTriGiamGia, tongTamTinh);
+            }
+
+            const tongTienGiam = Math.min(tongTamTinh, tienGiamKm + tienGiamTrucTiep);
+            const tongThanhToan = tongTamTinh - tongTienGiam;
+
+            $('#tongTamTinh').text(tongTamTinh.toLocaleString('vi-VN'));
+            $('#tienGiamKm').text(tienGiamKm.toLocaleString('vi-VN'));
+            $('#tienGiamTrucTiep').text(tienGiamTrucTiep.toLocaleString('vi-VN'));
+            $('#tongTienGiam').text(tongTienGiam.toLocaleString('vi-VN'));
+            $('#tongThanhToan').text(tongThanhToan.toLocaleString('vi-VN'));
+        }
+
+        // Tìm kiếm khách hàng
+        $('#searchKhachHang').on('input', function () {
+            var query = $(this).val();
+            if (query.length < 2) {
+                $('#khachHangList').hide();
+                return;
+            }
+
+            $.ajax({
+                url: '@Url.Action("Search", "Sale")',
+                type: 'GET',
+                data: { query: query },
+                success: function (data) {
+                    var list = $('#khachHangList').empty().show();
+                    if (data.length === 0) {
+                        list.append('<li class="list-group-item">Không tìm thấy khách hàng</li>');
+                    } else {
+                        data.forEach(function (kh) {
+                            list.append(`<li class="list-group-item list-group-item-action" data-ma="${kh.pkSMaKh}" data-ten="${kh.sTenKh}">${kh.sTenKh} (${kh.sSdt})</li>`);
+                        });
+                    }
+                }
+            });
+        });
+
+        $('#khachHangList').on('click', 'li', function () {
+            var maKH = $(this).data('ma');
+            var tenKH = $(this).data('ten');
+            $('#maKH').val(maKH);
+            $('#searchKhachHang').val(tenKH);
+            $('#khachHangList').hide();
+        });
+
+        // Tìm kiếm sản phẩm
+        $('#searchSanPham').on('input', function () {
+            var query = $(this).val();
+            if (query.length < 2) {
+                $('#sanPhamList').hide();
+                return;
+            }
+
+            $.ajax({
+                url: '@Url.Action("SearchProduct", "Sale")',
+                type: 'GET',
+                data: { query: query },
+                success: function (data) {
+                    var list = $('#sanPhamList').empty().show();
+                    if (data.length === 0) {
+                        list.append('<li class="list-group-item">Không tìm thấy sản phẩm</li>');
+                    } else {
+                        data.forEach(function (sp) {
+                            const canhBaoKeDon = sp.keDon ? ' <span class="badge badge-warning">Cần kê đơn</span>' : '';
+                            list.append(`<li class="list-group-item list-group-item-action" data-ma="${sp.pkSMaSp}" data-ten="${sp.sTenSp}" data-ton="${sp.iSl}" data-gia="${sp.fDonGiaBan}" data-kedon="${sp.keDon}">${sp.sTenSp}${canhBaoKeDon} (Tồn: ${sp.iSl})</li>`);
+                        });
+                    }
+                }
+            });
+        });
+
+        // Thêm sản phẩm vào bảng
+        $('#sanPhamList').on('click', 'li', function () {
+            var maSP = $(this).data('ma');
+            var tenSP = $(this).data('ten');
+            var tonKho = $(this).data('ton');
+            var donGia = $(this).data('gia');
+            var keDon = $(this).data('kedon') === true || $(this).data('kedon') === 'true';
+
+            if ($('#selectedSanPhams').find(`input[name='sanPhamsXuat[${maSP}]']`).length > 0) {
+                return;
+            }
+
+            var badgeKeDon = keDon ? ' <span class="badge badge-warning">Cần kê đơn</span>' : '';
+            var row = `
+                <tr>
+                    <td>${tenSP}${badgeKeDon}</td>
+                    <td>${tonKho}</td>
+                    <td class="don-gia-ban" data-gia="${donGia}">${toNumber(donGia).toLocaleString('vi-VN')}</td>
+                    <td><input type="number" name="sanPhamsXuat[${maSP}]" min="1" max="${tonKho}" class="form-control so-luong-xuat" /></td>
+                    <td><button type="button" class="btn btn-danger btn-sm remove-sp">Xóa</button></td>
+                </tr>`;
+            $('#selectedSanPhams').append(row);
+            $('#sanPhamList').hide();
+            $('#searchSanPham').val('');
+            updateTongTien();
+
+            if (keDon) {
+                $('#error-message').text('Lưu ý: Sản phẩm này thuộc nhóm thuốc cần kê đơn.').show();
+            }
+        });
+
+        // Xóa sản phẩm khỏi bảng
+        $('#selectedSanPhams').on('click', '.remove-sp', function () {
+            $(this).closest('tr').remove();
+            updateTongTien();
+        });
+
+        $('#selectedSanPhams').on('input', '.so-luong-xuat', updateTongTien);
+        $('#maKhuyenMai, #loaiGiamGia, #giaTriGiamGia').on('input change', updateTongTien);
+
+        // Gửi form
+        $('#banHangForm').on('submit', function (e) {
+            e.preventDefault();
+
+            var formData = $(this).serializeArray();
+            var data = {};
+            formData.forEach(function (item) {
+                if (item.name.startsWith('sanPhamsXuat')) {
+                    var key = item.name.match(/\[(.*?)\]/)[1];
+                    if (item.value && parseInt(item.value) > 0) data['sanPhamsXuat[' + key + ']'] = parseInt(item.value);
+                } else {
+                    data[item.name] = item.value;
+                }
+            });
+
+            if (!Object.keys(data).some(k => k.startsWith('sanPhamsXuat['))) {
+                $('#error-message').text('Vui lòng chọn ít nhất 1 sản phẩm với số lượng hợp lệ.').show();
+                $('#success-message').hide();
+                return;
+            }
+
+            $.ajax({
+                url: '@Url.Action("XuatKhoVaLapHoaDon", "Sale")',
+                type: 'POST',
+                data: data,
+                success: function (response) {
+                    if (response.success) {
+                        $('#success-message').text('Đã xuất kho và lập hóa đơn thành công!').show();
+                        $('#error-message').hide();
+
+                        const query = new URLSearchParams({
+                            maPT: response.maPT,
+                            maKhuyenMai: response.maKhuyenMai || '',
+                            khuyenMaiPhanTram: response.khuyenMaiPhanTram || 0,
+                            loaiGiamGia: response.loaiGiamGia || '',
+                            giaTriGiamGia: response.giaTriGiamGia || 0,
+                            tienGiamThuCong: response.tienGiamThuCong || 0,
+                            tongTienTamTinh: response.tongTienTamTinh || 0,
+                            tongTienGiam: response.tongTienGiam || 0,
+                            tongThanhToan: response.tongThanhToan || 0
+                        });
+
+                        window.location.href = '/Sale/HoaDon?' + query.toString();
+                    } else {
+                        $('#error-message').text(response.message).show();
+                        $('#success-message').hide();
+                    }
+                },
+                error: function (xhr, status) {
+                    var errorMessage = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Có lỗi xảy ra, vui lòng thử lại!';
+                    $('#error-message').text('Lỗi: ' + errorMessage + ' (Status: ' + status + ')').show();
+                    $('#success-message').hide();
+                }
+            });
+        });
+    });
+</script>
