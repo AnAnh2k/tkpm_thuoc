@@ -3,6 +3,8 @@ using CNPM.Models;
 using CNPM.Services;
 using Microsoft.EntityFrameworkCore;
 
+using CNPM.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -23,6 +25,7 @@ builder.Services.AddScoped<IQuyenService, QuyenService>();
 builder.Services.AddScoped<IChucVuService, ChucVuService>();
 builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 builder.Services.AddScoped<IPhieuThuService, PhieuThuService>();
+builder.Services.AddScoped<IDeXuatService, DeXuatService>();
 builder.Services.AddScoped<IPhieuXuatKhoService, PhieuXuatKhoService>();
 builder.Services.AddScoped<IHomeService, HomeService>();
 builder.Services.AddScoped<IWarehouseService, WarehouseService>();

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,6 +14,9 @@ public partial class PharmacyDbContext : DbContext
         : base(options)
     {
     }
+
+    public virtual DbSet<DeXuatToiUu> DeXuatToiUus { get; set; }
+    public virtual DbSet<NhatKyHeThong> NhatKyHeThongs { get; set; }
 
     public virtual DbSet<TblBaoCaoThuChi> TblBaoCaoThuChis { get; set; }
 
